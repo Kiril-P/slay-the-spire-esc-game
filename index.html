@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Archmage Brolo: Card Battle</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body>
+    <main id="game" class="game-shell" aria-label="Archmage Brolo card battle">
+      <img class="scene-bg" src="Assets/background.png" alt="">
+      <canvas id="effectsCanvas" class="effects-canvas"></canvas>
+
+      <section class="top-bar" aria-label="Battle resources">
+        <div class="top-pill">
+          <span>Energy</span>
+          <strong id="energyText">3/3</strong>
+        </div>
+        <div class="top-pill">
+          <span>Deck</span>
+          <strong id="deckCount">0</strong>
+        </div>
+        <div class="top-pill">
+          <span>Discard</span>
+          <strong id="discardCount">0</strong>
+        </div>
+        <div class="top-pill muted">
+          <span>Relics</span>
+          <strong>3</strong>
+        </div>
+        <div class="top-pill muted">
+          <span>Map</span>
+          <strong>Study</strong>
+        </div>
+        <div class="top-pill">
+          <span>Turn</span>
+          <strong id="turnText">1</strong>
+        </div>
+      </section>
+
+      <section id="playArea" class="play-area" aria-hidden="true"></section>
+
+      <section class="combat-layer" aria-label="Combatants">
+        <article id="playerSlot" class="combatant player-slot">
+          <img id="playerSprite" class="combat-sprite player-sprite" src="Assets/player.png" alt="Archmage Brolo">
+          <div class="nameplate">
+            <strong>Archmage Brolo</strong>
+            <span id="playerStatus">Block 0</span>
+          </div>
+          <div class="health-wrap" aria-label="Player health">
+            <span>Health</span>
+            <div class="health-bar">
+              <i id="playerHealthFill"></i>
+            </div>
+            <strong id="playerHealthText">72/80</strong>
+          </div>
+        </article>
+
+        <article id="enemySlot" class="combatant enemy-slot">
+          <img id="enemySprite" class="combat-sprite enemy-sprite" src="Assets/enemy_01.png" alt="Skelly Steve">
+          <div class="nameplate">
+            <strong>Skelly Steve</strong>
+            <span id="enemyIntent">Attack 8</span>
+          </div>
+          <div class="health-wrap" aria-label="Enemy health">
+            <span>Health</span>
+            <div class="health-bar enemy-health">
+              <i id="enemyHealthFill"></i>
+            </div>
+            <strong id="enemyHealthText">64/70</strong>
+          </div>
+        </article>
+      </section>
+
+      <section class="battle-feed" aria-live="polite">
+        <div id="battleToast">Choose a spell. Try to look confident.</div>
+      </section>
+
+      <section id="cardLayer" class="card-layer" aria-label="Player hand"></section>
+
+      <section class="bottom-bar" aria-label="Turn controls">
+        <div class="pile-panel">
+          <div>
+            <span>Deck</span>
+            <strong id="bottomDeckCount">0</strong>
+          </div>
+          <div>
+            <span>Discard</span>
+            <strong id="bottomDiscardCount">0</strong>
+          </div>
+        </div>
+        <button id="endTurnButton" class="end-turn" type="button">End Turn</button>
+      </section>
+    </main>
+
+    <script src="js/utils.js"></script>
+    <script src="js/AnimationManager.js"></script>
+    <script src="js/Character.js"></script>
+    <script src="js/Enemy.js"></script>
+    <script src="js/Deck.js"></script>
+    <script src="js/Card.js"></script>
+    <script src="js/InputManager.js"></script>
+    <script src="js/GameManager.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
