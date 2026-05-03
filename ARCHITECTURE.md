@@ -50,11 +50,15 @@ Future agents must read this file before starting work and update it before fini
   - Defines project rules, architecture discipline, spec-driven workflow, verification expectations, performance direction, feature flag direction, visual rules, and cleanup debt.
 
 - `.gitignore`
-  - Source control hygiene for local OS files, logs, environment files, and temporary files.
+  - Source control hygiene for local OS files, logs, environment files, temporary files, and local Vercel project metadata.
 
 - `ARCHITECTURE.md`
   - This living architecture map.
   - Must be updated when files, responsibilities, flows, or major constraints change.
+
+- `README.md`
+  - Public-facing project overview for GitHub and portfolio display.
+  - Links to the Vercel deployment, summarizes gameplay, tech stack, local run steps, project structure, and portfolio-relevant highlights.
 
 - `index.html`
   - Static document entrypoint.
