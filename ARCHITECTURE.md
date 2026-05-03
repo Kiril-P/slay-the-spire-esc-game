@@ -10,7 +10,7 @@ Future agents must read this file before starting work and update it before fini
 - The project currently has no package manifest, bundler, framework, module loader, build step, test harness, or dependency manager.
 - JavaScript files are loaded as global browser scripts in `index.html`.
 - Each JavaScript file uses an IIFE and exports one global on `window`.
-- CSS is a single stylesheet at `css/style.css`.
+- CSS is loaded from `css/style.css` for combat/gameplay UI and `css/screens.css` for title/result screens.
 - Visual assets are local PNG files under `Assets/`.
 - The game should remain launchable by opening `index.html` directly unless a future migration is explicitly approved.
 
@@ -18,18 +18,21 @@ Future agents must read this file before starting work and update it before fini
 
 1. `index.html` loads the DOM, stylesheet, assets, and JavaScript files.
 2. `js/main.js` waits for `DOMContentLoaded`.
-3. `main.js` creates `new GameManager()` and exposes it as `window.broloGame`.
-4. `GameManager.start()` draws the initial hand, updates UI, starts recurring Skelly Steve gag timing, and begins the animation loop.
-5. `GameManager.loop()` runs every animation frame, updates cards, updates targeting feedback, and asks `AnimationManager` to render canvas effects.
-6. `InputManager` tracks pointer movement, hover, drag start, drag release, and cancel behavior.
-7. `Card` instances own visual card state and interpolate toward target position, rotation, and scale every frame.
-8. Valid card releases call `GameManager.playCard()`.
-9. Played cards animate toward the discard pile, resolve effects after a short timing delay, leave the hand, and enter `Deck.discardPile`.
-10. `End Turn` discards the remaining hand, lets the enemy attack, then starts a new player turn if both characters are alive.
+3. `main.js` creates `new AppController()`, exposes it as `window.broloApp`, and exposes its `GameManager` as `window.broloGame`.
+4. `AppController` starts in the title state and calls `GameManager.startRound()` when the player clicks `Play`.
+5. `GameManager.startRound()` resets combat, draws the initial hand, updates UI, starts recurring Skelly Steve gag timing, and begins the animation loop if it has not started yet.
+6. `GameManager.loop()` runs every animation frame, updates cards, updates targeting feedback, and asks `AnimationManager` to render canvas effects.
+7. `InputManager` tracks pointer movement, hover, drag start, drag release, and cancel behavior while `GameManager` reports card input is allowed.
+8. `Card` instances own visual card state and interpolate toward target position, rotation, and scale every frame.
+9. Valid card releases call `GameManager.playCard()`.
+10. Played cards animate toward the discard pile, resolve effects after a short timing delay, leave the hand, and enter `Deck.discardPile`.
+11. `End Turn` discards the remaining hand, lets the enemy attack, then starts a new player turn if both characters are alive.
+12. Victory or defeat calls `GameManager.finishRound()`, and `AppController` switches to the result screen with `Play Again` and `Back to Title`.
 
 ## Core Runtime Responsibilities
 
-- `GameManager` is the coordinator. It owns turn state, energy, player/enemy instances, card definitions, deck, hand layout, UI text updates, card play validation, effect resolution, enemy turn sequencing, and the main frame loop.
+- `AppController` owns app-level title, playing, and result states. It controls screen visibility and starts fresh combat rounds through `GameManager`.
+- `GameManager` is the one-round combat coordinator. It owns turn state, energy, player/enemy instances, card definitions, deck, hand layout, UI text updates, card play validation, effect resolution, enemy turn sequencing, round reset/finish hooks, scheduled combat timers, and the main frame loop.
 - `InputManager` owns browser pointer events and translates them into game-level card hover, drag, release, and cancel calls.
 - `Card` owns card DOM creation, card state transitions, target values, interpolation, z-index priority, and transform rendering.
 - `Deck` owns draw pile, discard pile, shuffling, drawing, discarding, and pile counts.
@@ -55,8 +58,8 @@ Future agents must read this file before starting work and update it before fini
 
 - `index.html`
   - Static document entrypoint.
-  - Declares the game shell, background image, effects canvas, top resource bar, combatant DOM, battle toast, card layer, bottom pile panel, and `End Turn` button.
-  - Loads scripts in dependency order: utilities, animation, characters, deck, cards, input, game manager, main boot script.
+  - Declares the game shell, background image, effects canvas, title screen, result screen, top resource bar, combatant DOM, battle toast, card layer, bottom pile panel, and `End Turn` button.
+  - Loads scripts in dependency order: utilities, animation, characters, deck, cards, input, game manager, app controller, main boot script.
 
 ### CSS
 
@@ -65,12 +68,22 @@ Future agents must read this file before starting work and update it before fini
   - Current line count is above the preferred 300-line limit.
   - Future structural styling work should split this into focused stylesheets or sections if a bundler/module approach is introduced.
 
+- `css/screens.css`
+  - Title screen and result screen layout, buttons, title character presentation, app-state battle UI visibility, and mobile screen rules.
+  - Keeps non-combat screen styling out of oversized `css/style.css`.
+
 ### JavaScript
 
 - `js/main.js`
   - Browser boot script.
-  - Creates the `GameManager` after the DOM is ready.
-  - Stores the running game at `window.broloGame` for debugging.
+  - Creates the `AppController` after the DOM is ready.
+  - Stores the running app at `window.broloApp` and its combat manager at `window.broloGame` for debugging.
+
+- `js/AppController.js`
+  - Exports `window.AppController`.
+  - Owns app-level title, playing, and result states through `#game[data-state]`.
+  - Handles `Play`, `Play Again`, and `Back to Title` buttons.
+  - Creates the single `GameManager` instance and receives round-end outcomes.
 
 - `js/utils.js`
   - Exports `window.GameUtils`.
@@ -81,17 +94,18 @@ Future agents must read this file before starting work and update it before fini
   - Exports `window.AnimationManager`.
   - Owns canvas sizing and drawing.
   - Renders targeting line, particles, magical trails, projectile impacts, DOM sparkles, and floating combat text.
+  - Can clear transient canvas and DOM effects when a round resets.
   - Uses bounded arrays for particles and projectiles but does not yet expose perf stats or benchmark hooks.
 
 - `js/Character.js`
   - Exports `window.Character`.
   - Shared model/view bridge for combatants.
-  - Owns HP, max HP, block, health bar scaling, status text, hit animation flash, sprite center, cast point, and hitbox calculations.
+  - Owns HP, max HP, block, reset state, health bar scaling, status text, hit animation flash, sprite center, cast point, and hitbox calculations.
 
 - `js/Enemy.js`
   - Exports `window.Enemy`.
   - Extends `Character`.
-  - Owns enemy intent text, attack pattern, enemy attack timing, and Skelly Steve bone gag.
+  - Owns enemy intent text, attack pattern, enemy attack timing, round reset for intent state, and Skelly Steve bone gag.
 
 - `js/Deck.js`
   - Exports `window.Deck`.
@@ -115,7 +129,7 @@ Future agents must read this file before starting work and update it before fini
 - `js/GameManager.js`
   - Exports `window.GameManager`.
   - Main coordinator for the current demo.
-  - Owns player/enemy construction, card definitions, deck/hand arrays, energy, turn state, busy state, hand layout, card release validation, card effect timing, attack/defense/heal resolution, discard behavior, enemy turn flow, UI updates, and the animation frame loop.
+  - Owns player/enemy construction, card definitions, deck/hand arrays, energy, turn state, busy state, active-round state, hand layout, card release validation, card effect timing, attack/defense/heal resolution, discard behavior, enemy turn flow, UI updates, round reset/finish behavior, and the animation frame loop.
   - Current line count is above the preferred 300-line limit and this file is the largest architecture debt.
 
 ### Assets
@@ -155,6 +169,8 @@ Future agents must read this file before starting work and update it before fini
 - `GameManager.hand` stores active `Card` instances.
 - `GameManager.cards` stores all active card instances that need frame updates.
 - Character HP/block state lives in `Character` and `Enemy`.
+- App screen state lives in `AppController` and is mirrored to `#game[data-state]`.
+- Active round state and scheduled combat timers live in `GameManager`.
 - UI values are updated imperatively through DOM IDs in `GameManager.updateUI()` and character update methods.
 
 ## Interaction And Animation Model
@@ -167,6 +183,7 @@ Future agents must read this file before starting work and update it before fini
 - Dragging target cards activates a canvas targeting line from the card toward the pointer.
 - Magical particles and projectiles render on `#effectsCanvas`.
 - Some sparkles and floating text are short-lived DOM nodes created by `AnimationManager`.
+- Title and result screens sit above combat UI. Title state hides battle UI; result state covers battle UI and disables gameplay input.
 
 ## Current Verification
 
@@ -182,6 +199,7 @@ Future agents must read this file before starting work and update it before fini
   - card definitions/catalog
   - hand layout
   - turn flow
+  - round lifecycle
   - effect resolution
   - UI binding
   - combat sequencing

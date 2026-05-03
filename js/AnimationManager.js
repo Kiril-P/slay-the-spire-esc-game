@@ -36,6 +36,14 @@
       this.targetLine = { start, end };
     }
 
+    clear() {
+      this.particles = [];
+      this.projectiles = [];
+      this.targetLine = null;
+      this.root.querySelectorAll(".sparkle, .float-text").forEach((node) => node.remove());
+      this.ctx.clearRect(0, 0, this.width, this.height);
+    }
+
     spawnTrail(x, y, time) {
       if (time - this.lastTrailAt < 22) {
         return;

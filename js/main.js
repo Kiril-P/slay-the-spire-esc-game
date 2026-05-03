@@ -2,8 +2,9 @@
   "use strict";
 
   window.addEventListener("DOMContentLoaded", () => {
-    const game = new GameManager();
-    window.broloGame = game;
-    game.start();
+    const app = new AppController();
+    window.broloApp = app;
+    window.broloGame = app.game;
+    app.start();
   });
 })();

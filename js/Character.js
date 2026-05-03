@@ -4,14 +4,20 @@
   class Character {
     constructor(config) {
       this.name = config.name;
-      this.maxHp = config.maxHp;
-      this.hp = config.hp;
-      this.block = config.block || 0;
+      this.initialState = {
+        maxHp: config.maxHp,
+        hp: config.hp,
+        block: config.block || 0
+      };
+      this.maxHp = this.initialState.maxHp;
+      this.hp = this.initialState.hp;
+      this.block = this.initialState.block;
       this.slot = document.getElementById(config.slotId);
       this.sprite = document.getElementById(config.spriteId);
       this.healthFill = document.getElementById(config.healthFillId);
       this.healthText = document.getElementById(config.healthTextId);
       this.statusText = config.statusId ? document.getElementById(config.statusId) : null;
+      this.flashTimers = [];
       this.updateUI();
     }
 
@@ -50,7 +56,26 @@
       this.slot.classList.remove(className);
       void this.slot.offsetWidth;
       this.slot.classList.add(className);
-      window.setTimeout(() => this.slot.classList.remove(className), duration);
+      const timer = window.setTimeout(() => {
+        this.slot.classList.remove(className);
+        this.flashTimers = this.flashTimers.filter((id) => id !== timer);
+      }, duration);
+      this.flashTimers.push(timer);
+    }
+
+    clearAnimations() {
+      this.flashTimers.forEach((timer) => window.clearTimeout(timer));
+      this.flashTimers = [];
+      this.slot.classList.remove("casting", "hit", "attack-lunge", "bone-slip", "target-ready");
+    }
+
+    reset(state = {}) {
+      const next = Object.assign({}, this.initialState, state);
+      this.clearAnimations();
+      this.maxHp = next.maxHp;
+      this.hp = next.hp;
+      this.block = next.block || 0;
+      this.updateUI();
     }
 
     updateUI() {

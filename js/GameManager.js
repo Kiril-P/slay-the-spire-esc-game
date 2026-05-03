@@ -2,19 +2,26 @@
   "use strict";
 
   class GameManager {
-    constructor() {
+    constructor(options = {}) {
       this.root = document.getElementById("game");
       this.cardLayer = document.getElementById("cardLayer");
       this.playArea = document.getElementById("playArea");
       this.endTurnButton = document.getElementById("endTurnButton");
       this.toast = document.getElementById("battleToast");
+      this.onRoundEnd = options.onRoundEnd || function () {};
       this.bounds = this.root.getBoundingClientRect();
       this.cardLift = 128;
       this.maxEnergy = 3;
       this.energy = this.maxEnergy;
       this.turn = 1;
-      this.playerTurn = true;
+      this.playerTurn = false;
       this.isBusy = false;
+      this.roundActive = false;
+      this.roundFinished = false;
+      this.loopStarted = false;
+      this.boneGagInterval = null;
+      this.roundToken = 0;
+      this.timeoutIds = new Set();
       this.cards = [];
       this.hand = [];
       this.lastTime = performance.now();
@@ -52,10 +59,102 @@
     }
 
     start() {
+      this.startRound();
+    }
+
+    startRound() {
+      this.resetRound();
+      this.roundActive = true;
+      this.roundFinished = false;
+      this.playerTurn = true;
+      this.energy = this.maxEnergy;
+      this.setToast("Choose a spell. Try to look confident.");
       this.drawHand();
       this.updateUI();
       this.scheduleBoneGag();
+      this.ensureLoop();
+    }
+
+    resetRound() {
+      this.roundToken += 1;
+      this.roundActive = false;
+      this.roundFinished = false;
+      this.clearScheduledTimeouts();
+      this.clearDragTargets();
+      this.input.cancelDrag();
+
+      this.cards.forEach((card) => card.remove());
+      this.cards = [];
+      this.hand = [];
+      this.cardLayer.innerHTML = "";
+
+      this.deck.reset();
+      this.energy = this.maxEnergy;
+      this.turn = 1;
+      this.playerTurn = false;
+      this.isBusy = false;
+      this.player.reset();
+      this.enemy.reset();
+      this.animation.clear();
+      this.setToast("Choose a spell. Try to look confident.");
+      this.updateUI();
+    }
+
+    ensureLoop() {
+      if (this.loopStarted) {
+        return;
+      }
+      this.loopStarted = true;
+      this.lastTime = performance.now();
       requestAnimationFrame((time) => this.loop(time));
+    }
+
+    clearScheduledTimeouts() {
+      this.timeoutIds.forEach((id) => window.clearTimeout(id));
+      this.timeoutIds.clear();
+    }
+
+    scheduleTimeout(callback, delay) {
+      const token = this.roundToken;
+      const id = window.setTimeout(() => {
+        this.timeoutIds.delete(id);
+        if (this.roundActive && this.roundToken === token) {
+          callback();
+        }
+      }, delay);
+      this.timeoutIds.add(id);
+      return id;
+    }
+
+    isCurrentRound(token) {
+      return this.roundActive && this.roundToken === token;
+    }
+
+    canAcceptCardInput() {
+      return this.roundActive
+        && !this.roundFinished
+        && this.playerTurn
+        && !this.isBusy
+        && this.player.isAlive()
+        && this.enemy.isAlive();
+    }
+
+    canEndTurn() {
+      return this.canAcceptCardInput();
+    }
+
+    finishRound(outcome) {
+      if (!this.roundActive) {
+        return;
+      }
+      this.roundFinished = true;
+      this.roundActive = false;
+      this.playerTurn = false;
+      this.isBusy = false;
+      this.clearDragTargets();
+      this.input.cancelDrag();
+      this.updateUI();
+      this.onRoundEnd(outcome);
     }
 
     createCardDefinitions() {
@@ -175,7 +274,7 @@
     }
 
     getTopCardAt(clientX, clientY) {
-      if (!this.playerTurn || this.isBusy) {
+      if (!this.canAcceptCardInput()) {
         return null;
       }
 
@@ -198,6 +297,9 @@
     }
 
     onCardDragStart(card) {
+      if (!this.canAcceptCardInput()) {
+        return;
+      }
       if (card.definition.requiresTarget) {
         this.enemy.slot.classList.add("target-ready");
       } else {
@@ -206,6 +308,9 @@
     }
 
     onCardDrag(card, pointer) {
+      if (!this.canAcceptCardInput()) {
+        return;
+      }
       this.animation.spawnTrail(card.x, card.y, performance.now());
       if (card.definition.requiresTarget && this.isPointerOverEnemy(pointer)) {
         this.enemy.slot.classList.add("target-ready");
@@ -214,7 +319,7 @@
 
     onCardRelease(card, pointer) {
       this.clearDragTargets();
-      if (!this.playerTurn || this.isBusy) {
+      if (!this.canAcceptCardInput()) {
         card.returnToHand();
         return;
       }
@@ -287,6 +392,10 @@
     }
 
     playCard(card) {
+      if (!this.canAcceptCardInput()) {
+        card.returnToHand();
+        return;
+      }
       this.energy -= card.definition.cost;
       this.hand = this.hand.filter((item) => item !== card);
       this.layoutHand();
@@ -302,7 +411,7 @@
       });
 
       const delay = this.getEffectDelay(card.definition);
-      window.setTimeout(() => this.resolveCard(card.definition), delay);
+      this.scheduleTimeout(() => this.resolveCard(card.definition), delay);
     }
 
     getPlayLine(definition) {
@@ -328,7 +437,7 @@
     }
 
     resolveCard(definition) {
-      if (!this.player.isAlive()) {
+      if (!this.roundActive || this.roundFinished || !this.player.isAlive()) {
         return;
       }
 
@@ -349,7 +458,7 @@
         const healed = this.player.heal(definition.heal);
         this.player.gainBlock(definition.block);
         this.animation.floatingText(`+${healed} Health`, center.x, center.y - 108, "heal");
-        window.setTimeout(() => {
+        this.scheduleTimeout(() => {
           this.animation.floatingText(`+${definition.block} Block`, center.x + 42, center.y - 78, "block");
         }, 180);
         this.animation.burst(center.x, center.y - 52, {
@@ -404,7 +513,7 @@
     }
 
     applyAttack(definition) {
-      if (!this.enemy.isAlive()) {
+      if (!this.roundActive || this.roundFinished || !this.enemy.isAlive()) {
         return;
       }
 
@@ -413,7 +522,7 @@
       this.animation.floatingText(`-${result.damage} Health`, center.x, center.y - 95, "damage");
 
       if (definition.bonusDamage) {
-        window.setTimeout(() => {
+        this.scheduleTimeout(() => {
           if (!this.enemy.isAlive()) {
             return;
           }
@@ -426,7 +535,7 @@
       }
 
       if (definition.id === "doom") {
-        window.setTimeout(() => {
+        this.scheduleTimeout(() => {
           this.enemy.boneGag(this.animation);
         }, 190);
       }
@@ -439,19 +548,25 @@
         this.enemy.updateIntent();
         return;
       }
+      if (this.roundFinished) {
+        return;
+      }
       const center = this.enemy.getCenter();
       this.enemy.updateIntent();
       this.setToast("Skelly Steve yields, emotionally but politely.");
       this.animation.floatingText("Defeated", center.x, center.y - 132, "damage");
       this.endTurnButton.disabled = true;
       this.playerTurn = false;
+      this.roundFinished = true;
+      this.scheduleTimeout(() => this.finishRound("victory"), 720);
     }
 
     async endTurn() {
-      if (!this.playerTurn || this.isBusy) {
+      if (!this.canEndTurn()) {
         return;
       }
 
+      const token = this.roundToken;
       this.playerTurn = false;
       this.isBusy = true;
       this.energy = 0;
@@ -464,7 +579,7 @@
       this.hand = [];
       this.layoutHand();
       cardsToDiscard.forEach((card, index) => {
-        window.setTimeout(() => {
+        this.scheduleTimeout(() => {
           card.playToDiscard(this.getDiscardTarget(), (playedCard) => {
             playedCard.remove();
             this.cards = this.cards.filter((item) => item !== playedCard);
@@ -475,20 +590,34 @@
       });
 
       await GameUtils.wait(640 + cardsToDiscard.length * 65);
+      if (!this.isCurrentRound(token)) {
+        return;
+      }
       await this.enemy.attack(this.player, this.animation);
+      if (!this.isCurrentRound(token)) {
+        return;
+      }
 
       if (!this.player.isAlive()) {
         this.setToast("Brolo collapses with excellent posture.");
         this.endTurnButton.disabled = true;
         this.isBusy = false;
+        this.roundFinished = true;
+        this.scheduleTimeout(() => this.finishRound("defeat"), 720);
         return;
       }
 
       await GameUtils.wait(440);
+      if (!this.isCurrentRound(token)) {
+        return;
+      }
       this.startPlayerTurn();
     }
 
     startPlayerTurn() {
+      if (!this.roundActive || this.roundFinished) {
+        return;
+      }
       this.turn += 1;
       this.energy = this.maxEnergy;
       this.player.clearBlock();
@@ -499,8 +628,11 @@
     }
 
     scheduleBoneGag() {
-      window.setInterval(() => {
-        if (!this.playerTurn || this.isBusy || !this.enemy.isAlive()) {
+      if (this.boneGagInterval) {
+        return;
+      }
+      this.boneGagInterval = window.setInterval(() => {
+        if (!this.canAcceptCardInput()) {
           return;
         }
         if (Math.random() < 0.52) {
@@ -521,7 +653,7 @@
       document.getElementById("discardCount").textContent = String(counts.discard);
       document.getElementById("bottomDeckCount").textContent = String(counts.deck);
       document.getElementById("bottomDiscardCount").textContent = String(counts.discard);
-      this.endTurnButton.disabled = !this.playerTurn || this.isBusy || !this.player.isAlive() || !this.enemy.isAlive();
+      this.endTurnButton.disabled = !this.canEndTurn();
       this.player.updateUI();
       this.enemy.updateUI();
       this.enemy.updateIntent();

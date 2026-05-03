@@ -4,14 +4,41 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Archmage Brolo: Card Battle</title>
+    <link rel="icon" href="Assets/card_magic.png">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/screens.css">
   </head>
   <body>
-    <main id="game" class="game-shell" aria-label="Archmage Brolo card battle">
+    <main id="game" class="game-shell" data-state="title" aria-label="Archmage Brolo card battle">
       <img class="scene-bg" src="Assets/background.png" alt="">
       <canvas id="effectsCanvas" class="effects-canvas"></canvas>
 
-      <section class="top-bar" aria-label="Battle resources">
+      <section id="titleScreen" class="screen title-screen" aria-label="Title screen">
+        <div class="title-figures" aria-hidden="true">
+          <img class="title-brolo" src="Assets/player.png" alt="">
+          <img class="title-skelly" src="Assets/enemy_01.png" alt="">
+        </div>
+        <div class="title-copy">
+          <p class="screen-kicker">A wizard card battler of questionable competence</p>
+          <h1><span>Archmage</span><span>Brolo</span></h1>
+          <p class="screen-subtitle">Card Battle</p>
+          <button id="playButton" class="screen-button" type="button">Play</button>
+        </div>
+      </section>
+
+      <section id="resultScreen" class="screen result-screen" aria-label="Round result" aria-live="polite" hidden>
+        <div class="result-copy">
+          <p class="screen-kicker">Round Complete</p>
+          <h2 id="resultTitle">Victory</h2>
+          <p id="resultText">Skelly Steve yields, emotionally but politely.</p>
+          <div class="screen-actions">
+            <button id="playAgainButton" class="screen-button" type="button">Play Again</button>
+            <button id="backToTitleButton" class="screen-button secondary" type="button">Back to Title</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="top-bar battle-ui" aria-label="Battle resources">
         <div class="top-pill">
           <span>Energy</span>
           <strong id="energyText">3/3</strong>
@@ -38,9 +65,9 @@
         </div>
       </section>
 
-      <section id="playArea" class="play-area" aria-hidden="true"></section>
+      <section id="playArea" class="play-area battle-ui" aria-hidden="true"></section>
 
-      <section class="combat-layer" aria-label="Combatants">
+      <section class="combat-layer battle-ui" aria-label="Combatants">
         <article id="playerSlot" class="combatant player-slot">
           <img id="playerSprite" class="combat-sprite player-sprite" src="Assets/player.png" alt="Archmage Brolo">
           <div class="nameplate">
@@ -72,13 +99,13 @@
         </article>
       </section>
 
-      <section class="battle-feed" aria-live="polite">
+      <section class="battle-feed battle-ui" aria-live="polite">
         <div id="battleToast">Choose a spell. Try to look confident.</div>
       </section>
 
-      <section id="cardLayer" class="card-layer" aria-label="Player hand"></section>
+      <section id="cardLayer" class="card-layer battle-ui" aria-label="Player hand"></section>
 
-      <section class="bottom-bar" aria-label="Turn controls">
+      <section class="bottom-bar battle-ui" aria-label="Turn controls">
         <div class="pile-panel">
           <div>
             <span>Deck</span>
@@ -101,6 +128,7 @@
     <script src="js/Card.js"></script>
     <script src="js/InputManager.js"></script>
     <script src="js/GameManager.js"></script>
+    <script src="js/AppController.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

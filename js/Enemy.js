@@ -5,8 +5,16 @@
     constructor(config) {
       super(config);
       this.intentText = document.getElementById(config.intentId);
+      this.initialIntentDamage = config.intentDamage || 8;
       this.turnIndex = 1;
-      this.intentDamage = 8;
+      this.intentDamage = this.initialIntentDamage;
+      this.updateIntent();
+    }
+
+    reset(state = {}) {
+      super.reset(state);
+      this.turnIndex = 1;
+      this.intentDamage = state.intentDamage || this.initialIntentDamage;
       this.updateIntent();
     }
 

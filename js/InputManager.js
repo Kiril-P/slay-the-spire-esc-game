@@ -38,7 +38,7 @@
     }
 
     onPointerDown(event) {
-      if (event.button !== 0 || !this.game.playerTurn || this.game.isBusy) {
+      if (event.button !== 0 || !this.game.canAcceptCardInput()) {
         return;
       }
 
