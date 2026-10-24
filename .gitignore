@@ -6,3 +6,4 @@ Thumbs.db
 *.tmp
 *.temp
 .vercel
+*.TMP
