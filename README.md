@@ -4,7 +4,7 @@
 
 Drag questionable spells into battle and make Skelly Steve regret meeting Archmage Brolo.
 
-**[▶ Play in browser](https://kpetrovski.me/play/archmage-brolo-card-battle/)**
+**[▶ Play in browser](https://archmage.kirilpetrovski.com/)**
 
 ![Archmage Brolo: Card Battle: 01](docs/media/18-archmage-brolo-01.png)
 
